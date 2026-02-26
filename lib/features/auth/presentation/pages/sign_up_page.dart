@@ -75,77 +75,73 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       body: NeoBentoBackground(
         child: SafeArea(
-          child: SingleChildScrollView(
+          child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                // TOP: Header
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    Row(
+                      children: [
+                        const BackButton(),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+                          ),
+                          child: Text(
+                            'Step 1 of 2',
+                            style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    Chip(
-                      label: Text(
-                        'Step 1 of 2',
-                        style: theme.textTheme.labelMedium,
+                    const SizedBox(height: 16),
+                    FittedBox(
+                      child: Text(
+                        'Create your cozy\nhub',
+                        style: theme.textTheme.displayMedium,
                       ),
-                    ),
+                    ).animate().fadeIn().slideX(begin: -0.1, end: 0),
+                    const SizedBox(height: 12),
+                    Text(
+                      'We’ll set up your account so you can invite housemates next.',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ).animate().fadeIn(delay: 160.ms),
                   ],
                 ),
 
-                const SizedBox(height: 8),
-
-                Text(
-                  'Create your cozy hub',
-                  style: theme.textTheme.displayMedium,
-                ).animate().fadeIn().slideY(begin: 0.1, end: 0),
-
-                const SizedBox(height: 6),
-
-                Text(
-                  'We’ll set up your account so you can invite housemates next.',
-                  style: theme.textTheme.bodyMedium,
-                ).animate().fadeIn(delay: 160.ms),
-
-                const SizedBox(height: 24),
-
+                // MIDDLE: Sign Up Card
                 SquishyCard(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       SquishyButton(
                         label: 'Continue with Google',
                         isPrimary: false,
                         onPressed: _signUpWithGoogle,
-                        leading: const FaIcon(
-                          FontAwesomeIcons.google,
-                          size: 18,
-                          color: Colors.redAccent,
-                        ),
-                      ).animate().fadeIn(delay: 120.ms),
-
-                      const SizedBox(height: 18),
-
+                        leading: const FaIcon(FontAwesomeIcons.google, size: 18, color: Colors.redAccent),
+                      ),
+                      const SizedBox(height: 24),
                       Row(
                         children: [
-                          Expanded(child: Divider(color: theme.dividerColor)),
+                          const Expanded(child: Divider()),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12.0),
-                            child: Text(
-                              'or use email',
-                              style: theme.textTheme.labelMedium,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text('or use email', style: theme.textTheme.labelMedium),
                           ),
-                          Expanded(child: Divider(color: theme.dividerColor)),
+                          const Expanded(child: Divider()),
                         ],
                       ),
-
-                      const SizedBox(height: 18),
-
+                      const SizedBox(height: 24),
                       TextField(
                         controller: _emailController,
                         decoration: const InputDecoration(
@@ -153,9 +149,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                       ).animate().fadeIn(delay: 220.ms),
-
-                      const SizedBox(height: 12),
-
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
@@ -164,9 +158,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
                       ).animate().fadeIn(delay: 320.ms),
-
-                      const SizedBox(height: 20),
-
+                      const SizedBox(height: 32),
                       if (_isLoading)
                         const Center(child: CircularProgressIndicator())
                       else
@@ -174,24 +166,32 @@ class _SignUpPageState extends State<SignUpPage> {
                           label: 'Create account',
                           onPressed: _signUp,
                           isPrimary: true,
-                        )
-                            .animate()
-                            .fadeIn(delay: 400.ms)
-                            .scale(duration: 550.ms, curve: Curves.elasticOut),
+                        ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
-
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "Already have an account? Sign in",
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+                // BOTTOM: Footer Link
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          text: "Already have an account? ",
+                          style: theme.textTheme.bodyMedium,
+                          children: [
+                            TextSpan(
+                              text: 'Sign in',
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

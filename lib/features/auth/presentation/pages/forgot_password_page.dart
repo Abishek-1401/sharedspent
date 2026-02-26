@@ -50,31 +50,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     return Scaffold(
       body: NeoBentoBackground(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: theme.colorScheme.primary,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    const BackButton(),
+                    const Spacer(),
+                    Text(
+                      'Reset password',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 48), // Balance
+                  ],
                 ),
-                onPressed: () => Navigator.pop(context),
               ),
-              title: Text(
-                'Reset password',
-                style: theme.textTheme.titleLarge,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: _isSent ? _buildSuccessView(theme) : _buildFormView(theme),
+                ),
               ),
-              centerTitle: true,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: _isSent ? _buildSuccessView(theme) : _buildFormView(theme),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -82,45 +83,48 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   // View 1: The Form
   Widget _buildFormView(ThemeData theme) {
-    final muted = theme.brightness == Brightness.dark
-        ? theme.colorScheme.onSurface.withValues(alpha: 0.75)
-        : Colors.grey.shade700;
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text("Forgot Password?", style: theme.textTheme.displayMedium)
-            .animate().fadeIn().slideX(begin: -0.2, end: 0),
-        const SizedBox(height: 10),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text("Forgot\nPassword?", style: theme.textTheme.displayMedium),
+        ).animate().fadeIn().slideX(begin: -0.2, end: 0),
+        const SizedBox(height: 12),
         Text(
           "Don't worry! It happens. Please enter the address associated with your account.",
-          style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
         ).animate().fadeIn(delay: 200.ms),
         
         const SizedBox(height: 40),
         
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email ID',
-            prefixIcon: Icon(Icons.alternate_email),
+        SquishyCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email ID',
+                  prefixIcon: Icon(Icons.alternate_email),
+                ),
+              ).animate().fadeIn(delay: 300.ms),
+              
+              const SizedBox(height: 32),
+              
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                SquishyButton(
+                  label: "Send Magic Link",
+                  onPressed: _sendMagicLink,
+                  isPrimary: true,
+                ),
+            ],
           ),
-        ).animate().fadeIn(delay: 300.ms),
-        
-        const SizedBox(height: 30),
-        
-        if (_isLoading)
-          const Center(child: CircularProgressIndicator())
-        else
-          ElevatedButton(
-            onPressed: _sendMagicLink,
-            style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-            child: const Text("Send Magic Link"),
-          )
-              .animate()
-              .fadeIn(delay: 400.ms)
-              .scale(duration: 550.ms, curve: Curves.elasticOut),
+        ),
       ],
     );
   }
@@ -131,32 +135,37 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-          height: 140,
-          child: (Lottie.network(
-            'https://assets10.lottiefiles.com/packages/lf20_q5pk6p1k.json',
-            repeat: false,
-            fit: BoxFit.contain,
-          ) as Widget)
-              .animate()
-              .fadeIn(duration: 600.ms)
-              .scale(
+          height: 200,
+          child: Animate(
+            effects: [
+              FadeEffect(duration: 600.ms),
+              ScaleEffect(
                 begin: const Offset(0.8, 0.8),
                 end: const Offset(1, 1),
                 curve: Curves.elasticOut,
               ),
+            ],
+            child: Lottie.network(
+              'https://assets10.lottiefiles.com/packages/lf20_q5pk6p1k.json',
+              repeat: false,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
-        const SizedBox(height: 20),
-        Text("Check your mail!", style: theme.textTheme.displayMedium, textAlign: TextAlign.center),
-        const SizedBox(height: 10),
+        const SizedBox(height: 32),
+        FittedBox(child: Text("Check your mail!", style: theme.textTheme.displayMedium, textAlign: TextAlign.center)),
+        const SizedBox(height: 16),
         Text(
-          "We have sent a password recover instructions to your email.",
+          "We have sent password recovery instructions to your email.",
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium,
+          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800) ?? 
+                 const TextStyle(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 40),
-        ElevatedButton(
+        const SizedBox(height: 48),
+        SquishyButton(
+          label: "Back to Login",
           onPressed: () => Navigator.pop(context),
-          child: const Text("Back to Login"),
+          isPrimary: true,
         ),
       ],
     );

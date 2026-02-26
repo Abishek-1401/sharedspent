@@ -105,49 +105,47 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       body: NeoBentoBackground(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Hero(
-                  tag: 'logo_text',
-                  child: Text(
-                    'Cohabit',
-                    style: theme.textTheme.displayLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                )
-                    .animate()
-                    .fadeIn(duration: 600.ms)
-                    .slideY(begin: 0.2, end: 0),
+                // TOP: Header
+                Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    Hero(
+                      tag: 'logo_text',
+                      child: FittedBox(
+                        child: Text(
+                          'Cohabit',
+                          style: theme.textTheme.displayLarge,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2, end: 0),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Sign in to your shared home',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                      textAlign: TextAlign.center,
+                    ).animate().fadeIn(delay: 200.ms),
+                  ],
+                ),
 
-                const SizedBox(height: 6),
-
-                Text(
-                  'Sign in to your shared home',
-                  style: theme.textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ).animate().fadeIn(delay: 150.ms),
-
-                const SizedBox(height: 32),
-
+                // MIDDLE: Card
                 SquishyCard(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
                         'Welcome back, roomie 👋',
                         style: theme.textTheme.titleLarge,
-                      )
-                          .animate()
-                          .fadeIn(duration: 400.ms)
-                          .slideY(begin: 0.12, end: 0),
-
-                      const SizedBox(height: 16),
-
+                      ).animate().fadeIn(duration: 400.ms),
+                      const SizedBox(height: 24),
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -156,9 +154,7 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                       ).animate().fadeIn(delay: 150.ms),
-
-                      const SizedBox(height: 12),
-
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
@@ -167,27 +163,19 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
                       ).animate().fadeIn(delay: 250.ms),
-
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () {
-                            Navigator.of(context).push(
-                              _bentoRoute(const ForgotPasswordPage()),
-                            );
+                            Navigator.of(context).push(_bentoRoute(const ForgotPasswordPage()));
                           },
                           child: Text(
                             "Forgot password?",
-                            style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w900),
                           ),
                         ),
                       ).animate().fadeIn(delay: 300.ms),
-
-                      const SizedBox(height: 4),
-
+                      const SizedBox(height: 12),
                       if (_isLoading)
                         const Center(child: CircularProgressIndicator())
                       else
@@ -195,73 +183,52 @@ class _LoginPageState extends State<LoginPage> {
                           label: 'Sign in',
                           onPressed: _signIn,
                           isPrimary: true,
-                        )
-                            .animate()
-                            .fadeIn(delay: 350.ms)
-                            .scale(duration: 550.ms, curve: Curves.elasticOut),
-
-                      const SizedBox(height: 20),
-
+                        ),
+                      const SizedBox(height: 24),
                       Row(
                         children: [
-                          Expanded(
-                            child: Divider(color: theme.dividerColor),
-                          ),
+                          const Expanded(child: Divider()),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12.0),
-                            child: Text(
-                              'or',
-                              style: theme.textTheme.labelMedium,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text('or', style: theme.textTheme.labelMedium),
                           ),
-                          Expanded(
-                            child: Divider(color: theme.dividerColor),
-                          ),
+                          const Expanded(child: Divider()),
                         ],
                       ),
-
-                      const SizedBox(height: 16),
-
+                      const SizedBox(height: 24),
                       SquishyButton(
                         label: 'Continue with Google',
                         isPrimary: false,
                         onPressed: _signInWithGoogle,
-                        leading: const FaIcon(
-                          FontAwesomeIcons.google,
-                          size: 18,
-                          color: Colors.redAccent,
-                        ),
-                      ).animate().fadeIn(delay: 450.ms),
+                        leading: const FaIcon(FontAwesomeIcons.google, size: 18, color: Colors.redAccent),
+                      ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
-
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      _bentoRoute(const SignUpPage()),
-                    );
-                  },
-                  child: RichText(
-                    textAlign: TextAlign.center,
-                    text: TextSpan(
-                      text: "New to Cohabit? ",
-                      style: theme.textTheme.bodyMedium,
-                      children: [
-                        TextSpan(
-                          text: 'Create an account',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold,
+                // BOTTOM: Footer Link
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(_bentoRoute(const SignUpPage())),
+                    child: RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        text: "New to Cohabit? ",
+                        style: theme.textTheme.bodyMedium,
+                        children: [
+                          TextSpan(
+                            text: 'Create an account',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ).animate().fadeIn(delay: 550.ms),
+                  ).animate().fadeIn(delay: 500.ms),
+                ),
               ],
             ),
           ),

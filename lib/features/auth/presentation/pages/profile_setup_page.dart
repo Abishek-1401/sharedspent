@@ -83,14 +83,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       body: NeoBentoBackground(
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -99,82 +99,96 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       children: [
                         Align(
                           alignment: Alignment.centerRight,
-                          child: Chip(
-                            label: Text(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+                            ),
+                            child: Text(
                               'Step 2 of 2',
-                              style: theme.textTheme.labelMedium,
+                              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w900),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Set up your vibe",
-                          style: theme.textTheme.displayMedium,
-                        )
-                            .animate()
-                            .fadeIn()
-                            .slideX(begin: -0.2, end: 0),
+                        const SizedBox(height: 16),
+                        FittedBox(
+                          child: Text(
+                            "Set up your vibe",
+                            style: theme.textTheme.displayMedium,
+                          ),
+                        ).animate().fadeIn().slideX(begin: -0.2, end: 0),
                       ],
                     );
                   },
                 ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  "This is how your roommates will spot you around the app.",
-                  style: theme.textTheme.bodyMedium,
-                ).animate().fadeIn(delay: 160.ms),
-
-                const SizedBox(height: 24),
-
-                SquishyCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Choose an avatar",
-                        style: theme.textTheme.titleLarge,
+                const SizedBox(height: 40),
+                Expanded(
+                  child: SquishyCard(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Choose your avatar",
+                            style: theme.textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Pick one that represents you best!",
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 32),
+                          Center(
+                            child: Hero(
+                              tag: 'avatar_selection',
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: theme.colorScheme.primary,
+                                    width: 3,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 60,
+                                  backgroundImage: NetworkImage(_selectedAvatarUrl ?? ''),
+                                ),
+                              ),
+                            ),
+                          ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                          const SizedBox(height: 40),
+                          _buildAvatarPinboard(theme),
+                          const SizedBox(height: 40),
+                          Text(
+                            "What should we call you?",
+                            style: theme.textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _usernameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Username',
+                              prefixIcon: Icon(Icons.face_rounded),
+                              hintText: 'e.g. SuperRoomie',
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                          if (_isLoading)
+                            const Center(child: CircularProgressIndicator())
+                          else
+                            SquishyButton(
+                              label: 'Start Cohabiting',
+                              onPressed: _saveProfile,
+                            ),
+                          const SizedBox(height: 20),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      _buildAvatarPinboard(theme),
-                    ],
+                    ),
                   ),
                 ),
-
-                const SizedBox(height: 24),
-
-                SquishyCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _usernameController,
-                        style: theme.textTheme.bodyLarge,
-                        decoration: const InputDecoration(
-                          labelText: "Username",
-                          prefixIcon: Icon(Icons.alternate_email),
-                          hintText: "e.g., ChefAbishek",
-                        ),
-                      ).animate().fadeIn(delay: 200.ms),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                if (_isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  SquishyButton(
-                    label: "Enter the house",
-                    onPressed: _saveProfile,
-                  )
-                      .animate()
-                      .fadeIn(delay: 350.ms)
-                      .scale(duration: 550.ms, curve: Curves.elasticOut),
               ],
             ),
           ),
