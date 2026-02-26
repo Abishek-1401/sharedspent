@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
+import '../../../../core/widgets/neo_bento_widgets.dart';
 import 'sign_up_page.dart';
 import 'forgot_password_page.dart';
 
@@ -73,141 +75,184 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  Route<T> _bentoRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.elasticOut,
+          reverseCurve: Curves.easeOut,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.08),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: 650.ms,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      body: SafeArea(
+      body: NeoBentoBackground(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. BRANDING (Unbounded Font)
                 Hero(
                   tag: 'logo_text',
                   child: Text(
-                    'Cohabit.',
+                    'Cohabit',
                     style: theme.textTheme.displayLarge,
                     textAlign: TextAlign.center,
                   ),
-                ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0),
-                
-                const SizedBox(height: 8),
-                
+                )
+                    .animate()
+                    .fadeIn(duration: 600.ms)
+                    .slideY(begin: 0.2, end: 0),
+
+                const SizedBox(height: 6),
+
                 Text(
-                  'Shared living, simplified.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
-                  ),
+                  'Sign in to your shared home',
+                  style: theme.textTheme.bodyMedium,
                   textAlign: TextAlign.center,
-                ).animate().fadeIn(delay: 200.ms),
+                ).animate().fadeIn(delay: 150.ms),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
 
-                // 2. INPUT FIELDS (Pro/Clean Style)
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                ).animate().fadeIn(delay: 300.ms),
+                SquishyCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Welcome back, roomie 👋',
+                        style: theme.textTheme.titleLarge,
+                      )
+                          .animate()
+                          .fadeIn(duration: 400.ms)
+                          .slideY(begin: 0.12, end: 0),
 
-                const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                ).animate().fadeIn(delay: 400.ms),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email address',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                      ).animate().fadeIn(delay: 150.ms),
 
-                // 3. FORGOT PASSWORD
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
-                      );
-                    },
-                    child: Text(
-                      "Forgot Password?",
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                      ).animate().fadeIn(delay: 250.ms),
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              _bentoRoute(const ForgotPasswordPage()),
+                            );
+                          },
+                          child: Text(
+                            "Forgot password?",
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 300.ms),
+
+                      const SizedBox(height: 4),
+
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else
+                        SquishyButton(
+                          label: 'Sign in',
+                          onPressed: _signIn,
+                          isPrimary: true,
+                        )
+                            .animate()
+                            .fadeIn(delay: 350.ms)
+                            .scale(duration: 550.ms, curve: Curves.elasticOut),
+
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(color: theme.dividerColor),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text(
+                              'or',
+                              style: theme.textTheme.labelMedium,
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(color: theme.dividerColor),
+                          ),
+                        ],
                       ),
-                    ),
+
+                      const SizedBox(height: 16),
+
+                      SquishyButton(
+                        label: 'Continue with Google',
+                        isPrimary: false,
+                        onPressed: _signInWithGoogle,
+                        leading: const FaIcon(
+                          FontAwesomeIcons.google,
+                          size: 18,
+                          color: Colors.redAccent,
+                        ),
+                      ).animate().fadeIn(delay: 450.ms),
+                    ],
                   ),
-                ).animate().fadeIn(delay: 450.ms),
-
-                const SizedBox(height: 24),
-
-                // 4. SIGN IN BUTTON
-                if (_isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  ElevatedButton(
-                    onPressed: _signIn,
-                    child: const Text('Sign In'),
-                  ).animate().fadeIn(delay: 500.ms).scale(),
-
-                const SizedBox(height: 24),
-
-                // 5. DIVIDER
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: theme.dividerColor)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('OR', style: theme.textTheme.labelMedium),
-                    ),
-                    Expanded(child: Divider(color: theme.dividerColor)),
-                  ],
                 ),
 
                 const SizedBox(height: 24),
 
-                // 6. GOOGLE OAUTH BUTTON
-                OutlinedButton.icon(
-                  onPressed: _signInWithGoogle,
-                  icon: const FaIcon(FontAwesomeIcons.google, size: 18),
-                  label: const Text('Continue with Google'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: theme.disabledColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    foregroundColor: theme.colorScheme.onSurface,
-                  ),
-                ).animate().fadeIn(delay: 600.ms),
-
-                const SizedBox(height: 32),
-
-                // 7. SIGN UP NAVIGATION
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SignUpPage()),
+                    Navigator.of(context).push(
+                      _bentoRoute(const SignUpPage()),
                     );
                   },
                   child: RichText(
+                    textAlign: TextAlign.center,
                     text: TextSpan(
-                      text: "Don't have an account? ",
+                      text: "New to Cohabit? ",
                       style: theme.textTheme.bodyMedium,
                       children: [
                         TextSpan(
-                          text: 'Sign Up',
+                          text: 'Create an account',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -216,7 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
                   ),
-                ),
+                ).animate().fadeIn(delay: 550.ms),
               ],
             ),
           ),

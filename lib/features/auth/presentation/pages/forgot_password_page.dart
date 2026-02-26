@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
+
+import '../../../../core/widgets/neo_bento_widgets.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -46,18 +49,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: _isSent ? _buildSuccessView(theme) : _buildFormView(theme),
+      body: NeoBentoBackground(
+        child: Column(
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: theme.colorScheme.primary,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                'Reset password',
+                style: theme.textTheme.titleLarge,
+              ),
+              centerTitle: true,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: _isSent ? _buildSuccessView(theme) : _buildFormView(theme),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -65,6 +82,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   // View 1: The Form
   Widget _buildFormView(ThemeData theme) {
+    final muted = theme.brightness == Brightness.dark
+        ? theme.colorScheme.onSurface.withValues(alpha: 0.75)
+        : Colors.grey.shade700;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -73,7 +94,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         const SizedBox(height: 10),
         Text(
           "Don't worry! It happens. Please enter the address associated with your account.",
-          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          style: theme.textTheme.bodyMedium?.copyWith(color: muted),
         ).animate().fadeIn(delay: 200.ms),
         
         const SizedBox(height: 40),
@@ -96,7 +117,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             onPressed: _sendMagicLink,
             style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
             child: const Text("Send Magic Link"),
-          ).animate().fadeIn(delay: 400.ms).scale(),
+          )
+              .animate()
+              .fadeIn(delay: 400.ms)
+              .scale(duration: 550.ms, curve: Curves.elasticOut),
       ],
     );
   }
@@ -106,8 +130,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.mark_email_read_outlined, size: 80, color: Colors.green)
-            .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+        SizedBox(
+          height: 140,
+          child: (Lottie.network(
+            'https://assets10.lottiefiles.com/packages/lf20_q5pk6p1k.json',
+            repeat: false,
+            fit: BoxFit.contain,
+          ) as Widget)
+              .animate()
+              .fadeIn(duration: 600.ms)
+              .scale(
+                begin: const Offset(0.8, 0.8),
+                end: const Offset(1, 1),
+                curve: Curves.elasticOut,
+              ),
+        ),
         const SizedBox(height: 20),
         Text("Check your mail!", style: theme.textTheme.displayMedium, textAlign: TextAlign.center),
         const SizedBox(height: 10),

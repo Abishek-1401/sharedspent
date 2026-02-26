@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
+
+import '../../../../core/widgets/neo_bento_widgets.dart';
 import '../widgets/auth_gate.dart';
 
 class SplashPage extends StatefulWidget {
@@ -16,21 +19,31 @@ class _SplashPageState extends State<SplashPage> {
     _navigateToNext();
   }
 
-  // This function is what moves the app past the logo
   void _navigateToNext() async {
-    // 1. Wait for 2.5 seconds to show the logo
-    await Future.delayed(const Duration(milliseconds: 2500));
-    
+    await Future.delayed(const Duration(milliseconds: 2600));
+
     if (!mounted) return;
 
-    // 2. Navigate to AuthGate and REMOVE SplashPage from the history
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const AuthGate(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AuthGate(),
+        transitionsBuilder:
+            (context, animation, secondaryAnimation, child) {
+          final curved =
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.08),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
         },
-        transitionDuration: 800.ms,
+        transitionDuration: 700.ms,
       ),
     );
   }
@@ -40,47 +53,52 @@ class _SplashPageState extends State<SplashPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      // Your brand Cream background
-      backgroundColor: const Color(0xFFFDF4E3), 
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // LOGO ICON
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(24),
+      body: NeoBentoBackground(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Floating face animation
+              SizedBox(
+                height: 160,
+                child: (Lottie.network(
+                  'https://assets7.lottiefiles.com/packages/lf20_ktwnwv5m.json',
+                  repeat: true,
+                  fit: BoxFit.contain,
+                ) as Widget)
+                    .animate()
+                    .fadeIn(duration: 800.ms)
+                    .scale(
+                      begin: const Offset(0.9, 0.9),
+                      end: const Offset(1, 1),
+                    ),
               ),
-              child: const Icon(
-                Icons.home_work_rounded,
-                color: Colors.white,
-                size: 60,
-              ),
-            )
-            .animate(onPlay: (controller) => controller.repeat(reverse: true))
-            .scale(
-              begin: const Offset(1, 1), 
-              end: const Offset(1.1, 1.1), 
-              duration: 1000.ms, 
-              curve: Curves.easeInOut,
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-            // LOGO TEXT
-            Text(
-              'Cohabit.',
-              style: theme.textTheme.displayLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontSize: 40,
-              ),
-            )
-            .animate()
-            .fadeIn(duration: 800.ms)
-            .slideY(begin: 0.3, end: 0),
-          ],
+              Hero(
+                tag: 'logo_text',
+                child: Text(
+                  'Cohabit',
+                  style: theme.textTheme.displayLarge!,
+                ),
+              )
+                  .animate()
+                  .fadeIn(duration: 700.ms)
+                  .slideY(begin: 0.2, end: 0),
+
+              const SizedBox(height: 8),
+
+              Text(
+                'Make shared living feel soft and playful.',
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              )
+                  .animate()
+                  .fadeIn(duration: 700.ms, delay: 200.ms)
+                  .slideY(begin: 0.25, end: 0),
+            ],
+          ),
         ),
       ),
     );

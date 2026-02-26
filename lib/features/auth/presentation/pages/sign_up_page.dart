@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../../../core/widgets/neo_bento_widgets.dart';
+
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -71,79 +73,131 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Join Cohabit.', style: theme.textTheme.displayLarge)
-                  .animate().fadeIn().slideY(begin: 0.1, end: 0),
-              
-              const SizedBox(height: 8),
-              
-              Text('Start managing your shared home together.', style: theme.textTheme.bodyMedium)
-                  .animate().fadeIn(delay: 200.ms),
-
-              const SizedBox(height: 40),
-
-              OutlinedButton.icon(
-                onPressed: _signUpWithGoogle,
-                icon: const FaIcon(FontAwesomeIcons.google, size: 18),
-                label: const Text('Sign Up with Google'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      body: NeoBentoBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    ),
+                    const Spacer(),
+                    Chip(
+                      label: Text(
+                        'Step 1 of 2',
+                        style: theme.textTheme.labelMedium,
+                      ),
+                    ),
+                  ],
                 ),
-              ).animate().fadeIn(delay: 300.ms),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 8),
 
-              Row(children: [
-                Expanded(child: Divider(color: theme.dividerColor)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('OR', style: theme.textTheme.labelMedium),
+                Text(
+                  'Create your cozy hub',
+                  style: theme.textTheme.displayMedium,
+                ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  'We’ll set up your account so you can invite housemates next.',
+                  style: theme.textTheme.bodyMedium,
+                ).animate().fadeIn(delay: 160.ms),
+
+                const SizedBox(height: 24),
+
+                SquishyCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SquishyButton(
+                        label: 'Continue with Google',
+                        isPrimary: false,
+                        onPressed: _signUpWithGoogle,
+                        leading: const FaIcon(
+                          FontAwesomeIcons.google,
+                          size: 18,
+                          color: Colors.redAccent,
+                        ),
+                      ).animate().fadeIn(delay: 120.ms),
+
+                      const SizedBox(height: 18),
+
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: theme.dividerColor)),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text(
+                              'or use email',
+                              style: theme.textTheme.labelMedium,
+                            ),
+                          ),
+                          Expanded(child: Divider(color: theme.dividerColor)),
+                        ],
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      TextField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email address',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                      ).animate().fadeIn(delay: 220.ms),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Create a password',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                      ).animate().fadeIn(delay: 320.ms),
+
+                      const SizedBox(height: 20),
+
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else
+                        SquishyButton(
+                          label: 'Create account',
+                          onPressed: _signUp,
+                          isPrimary: true,
+                        )
+                            .animate()
+                            .fadeIn(delay: 400.ms)
+                            .scale(duration: 550.ms, curve: Curves.elasticOut),
+                    ],
+                  ),
                 ),
-                Expanded(child: Divider(color: theme.dividerColor)),
-              ]),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.email_outlined)),
-              ).animate().fadeIn(delay: 400.ms),
-
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline)),
-              ).animate().fadeIn(delay: 500.ms),
-
-              const SizedBox(height: 32),
-
-              if (_isLoading)
-                const Center(child: CircularProgressIndicator())
-              else
-                ElevatedButton(
-                  onPressed: _signUp,
-                  child: const Text('Create Account'),
-                ).animate().fadeIn(delay: 600.ms).scale(),
-                
-              const SizedBox(height: 24),
-
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("Already have an account? Sign In", 
-                    style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "Already have an account? Sign in",
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

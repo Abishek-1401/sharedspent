@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../../core/constants/avatar_presets.dart';
+import '../../../../core/widgets/neo_bento_widgets.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -83,54 +85,98 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // BRANDING
-              Text("Create Profile.", style: theme.textTheme.displayMedium)
-                  .animate().fadeIn().slideX(begin: -0.2),
-              
-              const SizedBox(height: 8),
-              
-              Text("How should your roommates see you?", style: theme.textTheme.bodyMedium),
-              
-              const SizedBox(height: 40),
-
-              // --- AVATAR PINBOARD ---
-              const Text("Choose an Avatar", style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              _buildAvatarPinboard(theme),
-              
-              const SizedBox(height: 32),
-
-              // --- USERNAME INPUT ---
-              TextField(
-                controller: _usernameController,
-                style: theme.textTheme.bodyLarge,
-                decoration: const InputDecoration(
-                  labelText: "Username",
-                  prefixIcon: Icon(Icons.alternate_email),
-                  hintText: "e.g., ChefAbishek",
+      body: NeoBentoBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Chip(
+                            label: Text(
+                              'Step 2 of 2',
+                              style: theme.textTheme.labelMedium,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Set up your vibe",
+                          style: theme.textTheme.displayMedium,
+                        )
+                            .animate()
+                            .fadeIn()
+                            .slideX(begin: -0.2, end: 0),
+                      ],
+                    );
+                  },
                 ),
-              ).animate().fadeIn(delay: 200.ms),
 
-              const SizedBox(height: 40),
+                const SizedBox(height: 8),
 
-              // --- ACTION BUTTON ---
-              if (_isLoading)
-                const Center(child: CircularProgressIndicator())
-              else
-                ElevatedButton(
-                  onPressed: _saveProfile,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 60),
+                Text(
+                  "This is how your roommates will spot you around the app.",
+                  style: theme.textTheme.bodyMedium,
+                ).animate().fadeIn(delay: 160.ms),
+
+                const SizedBox(height: 24),
+
+                SquishyCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Choose an avatar",
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildAvatarPinboard(theme),
+                    ],
                   ),
-                  child: const Text("Enter the House"),
-                ).animate().fadeIn(delay: 400.ms).scale(),
-            ],
+                ),
+
+                const SizedBox(height: 24),
+
+                SquishyCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _usernameController,
+                        style: theme.textTheme.bodyLarge,
+                        decoration: const InputDecoration(
+                          labelText: "Username",
+                          prefixIcon: Icon(Icons.alternate_email),
+                          hintText: "e.g., ChefAbishek",
+                        ),
+                      ).animate().fadeIn(delay: 200.ms),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  SquishyButton(
+                    label: "Enter the house",
+                    onPressed: _saveProfile,
+                  )
+                      .animate()
+                      .fadeIn(delay: 350.ms)
+                      .scale(duration: 550.ms, curve: Curves.elasticOut),
+              ],
+            ),
           ),
         ),
       ),
