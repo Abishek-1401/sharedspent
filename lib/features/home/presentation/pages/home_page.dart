@@ -4,11 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/neo_bento_widgets.dart';
 import '../../../../main.dart';
 import 'profile_settings_page.dart';
+import 'grocery_page.dart';
+import 'bill_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,24 +23,60 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final user = Supabase.instance.client.auth.currentUser;
   Map<String, dynamic>? _profileData;
+  Map<String, dynamic>? _apartmentData;
+  List<Map<String, dynamic>> _roommates = [];
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    _fetchRoommates();
   }
 
   Future<void> _fetchProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
+
     try {
-      final data = await Supabase.instance.client.from('profiles').select().eq('id', user!.id).single();
-      if (mounted) {
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('*, apartments(*)')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (mounted && response != null) {
         setState(() {
-          _profileData = data;
+          _profileData = response;
+          _apartmentData = response['apartments'];
         });
       }
     } catch (e) {
       debugPrint("Error fetching profile: $e");
+    }
+  }
+
+  Future<void> _fetchRoommates() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final profile = await Supabase.instance.client.from('profiles').select('apartment_id').eq('id', user.id).maybeSingle();
+      if (profile != null && profile['apartment_id'] != null) {
+        final apartmentId = profile['apartment_id'];
+        final response = await Supabase.instance.client.from('profiles').select().eq('apartment_id', apartmentId);
+        if (mounted) {
+          setState(() {
+            _roommates = List<Map<String, dynamic>>.from(response);
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _roommates = [];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching roommates: $e");
     }
   }
 
@@ -50,6 +89,14 @@ class _HomePageState extends State<HomePage> {
       builder: (context) => GlassSheet(
         title: 'Account & Settings',
         children: [
+          _MenuTile(
+            icon: Icons.share_rounded,
+            label: 'Share Invite',
+            onTap: () {
+              Navigator.pop(context);
+              _showShareInvite();
+            },
+          ),
           _MenuTile(
             icon: Icons.person_outline_rounded,
             label: 'Edit Profile',
@@ -81,11 +128,78 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _showShareInvite() {
+    final inviteCode = _apartmentData?['invite_code'] ?? '------';
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GlassSheet(
+        title: 'Invite Roommates',
+        children: [
+          const Text(
+            "Share this code or scan the QR to join this home.",
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: QrImageView(
+              data: inviteCode,
+              version: QrVersions.auto,
+              size: 200.0,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.circle,
+                color: Colors.black,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.circle,
+                color: Colors.black,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              inviteCode,
+              style: theme.textTheme.displaySmall?.copyWith(
+                letterSpacing: 8,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SquishyButton(
+            label: 'Copy Invite Link',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: "Join my Cohabit room! Code: $inviteCode"));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Invite copied to clipboard! ✨")),
+              );
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final avatarUrl = _profileData?['avatar_url'] ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}';
     final username = _profileData?['username'] ?? 'Roomie';
+    final apartmentName = _apartmentData?['name'] ?? 'Your Home';
 
     return Scaffold(
       body: NeoBentoBackground(
@@ -103,7 +217,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         FittedBox(
                           child: Text(
-                            'Cohabit',
+                            apartmentName,
                             style: theme.textTheme.titleLarge?.copyWith(fontSize: 24),
                           ),
                         ),
@@ -136,6 +250,31 @@ class _HomePageState extends State<HomePage> {
                         FittedBox(
                           child: Text(username, style: theme.textTheme.displayMedium),
                         ),
+                        const SizedBox(height: 16),
+                        
+                        // Roommates Row
+                        if (_roommates.isNotEmpty)
+                          SizedBox(
+                            height: 40,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _roommates.length,
+                              itemBuilder: (context, index) {
+                                final roommate = _roommates[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: Tooltip(
+                                    message: roommate['username'] ?? 'Roomie',
+                                    child: CircleAvatar(
+                                      radius: 16,
+                                      backgroundImage: NetworkImage(roommate['avatar_url'] ?? ''),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ).animate().fadeIn(delay: 300.ms),
+
                         const SizedBox(height: 32),
                         _buildStaggeredBentoGrid(),
                         const SizedBox(height: 100), // Space for bottom dock
@@ -151,7 +290,11 @@ class _HomePageState extends State<HomePage> {
               bottom: 30,
               left: 24,
               right: 24,
-              child: _FloatingDock(onProfileTap: _showProfileMenu),
+              child: _FloatingDock(
+                onProfileTap: _showProfileMenu,
+                onGroceryTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GroceryPage())),
+                onBillTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BillPage())),
+              ),
             ),
           ],
         ),
@@ -160,25 +303,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildStaggeredBentoGrid() {
+    final apartment = _profileData?['apartments'];
     final tiles = [
       _BentoData(
-        title: 'Chores',
-        subtitle: '3 pending',
-        icon: Icons.checklist_rounded,
+        title: apartment?['name'] ?? 'Your Room',
+        subtitle: '${_roommates.length} Roommates',
+        icon: Icons.home_rounded,
         color: AppColors.bentoMint,
         crossAxisCellCount: 2,
         mainAxisCellCount: 2,
       ),
       _BentoData(
-        title: 'Pantry',
-        subtitle: 'Running low!',
+        title: 'Inventory',
+        subtitle: 'Milk run out',
         icon: Icons.shopping_basket_rounded,
         color: AppColors.bentoSalmon,
         crossAxisCellCount: 2,
         mainAxisCellCount: 1,
       ),
       _BentoData(
-        title: 'Bills',
+        title: 'Expenses',
         subtitle: 'Due in 2d',
         icon: Icons.payments_rounded,
         color: AppColors.bentoLilac,
@@ -209,22 +353,27 @@ class _HomePageState extends State<HomePage> {
             color: data.color,
             delay: (index * 100).ms,
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${data.title} coming soon ✨'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-              );
+              if (data.title == 'Inventory') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const GroceryPage()));
+              } else if (data.title == 'Expenses') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BillPage()));
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${data.title} coming soon ✨'),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                );
+              }
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(data.icon, size: 32, color: data.color.withValues(alpha: 0.8)),
+                Icon(data.icon, size: 32, color: Colors.black87),
                 const SizedBox(height: 12),
-                FittedBox(child: Text(data.title, style: Theme.of(context).textTheme.titleLarge)),
-                Text(data.subtitle, style: Theme.of(context).textTheme.labelMedium),
+                FittedBox(child: Text(data.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+                Text(data.subtitle, style: const TextStyle(fontSize: 14, color: Colors.black54)),
               ],
             ),
           ),
@@ -251,8 +400,14 @@ class _BentoData {
 }
 
 class _FloatingDock extends StatelessWidget {
-  const _FloatingDock({required this.onProfileTap});
+  const _FloatingDock({
+    required this.onProfileTap,
+    required this.onGroceryTap,
+    required this.onBillTap,
+  });
   final VoidCallback onProfileTap;
+  final VoidCallback onGroceryTap;
+  final VoidCallback onBillTap;
 
   @override
   Widget build(BuildContext context) {
@@ -277,8 +432,9 @@ class _FloatingDock extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _DockIcon(icon: Icons.home_filled, isSelected: true, onTap: () {}),
-              _DockIcon(icon: Icons.checklist_rounded, onTap: () {}),
-              _DockIcon(icon: Icons.cookie_rounded, onTap: () {}),
+              _DockIcon(icon: Icons.shopping_basket_rounded, onTap: onGroceryTap),
+              _DockIcon(icon: Icons.payments_rounded, onTap: onBillTap),
+              _DockIcon(icon: Icons.analytics_rounded, onTap: () {}),
               _DockIcon(icon: Icons.person_rounded, onTap: onProfileTap),
             ],
           ),

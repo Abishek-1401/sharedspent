@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/login_page.dart';
 import '../pages/profile_setup_page.dart';
 import '../../../home/presentation/pages/home_page.dart';
+import '../../../home/presentation/pages/room_setup_page.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
@@ -37,6 +38,21 @@ class _AuthGateState extends State<AuthGate> {
     super.dispose();
   }
 
+  // Helper to ensure the profile row exists
+  // We use .upsert with ON CONFLICT DO NOTHING (id is PK)
+  final Set<String> _profileCheckCompleted = {};
+  Future<void> _ensureProfileExists(String userId) async {
+    if (_profileCheckCompleted.contains(userId)) return;
+    try {
+      await Supabase.instance.client.from('profiles').upsert({
+        'id': userId,
+      }, onConflict: 'id');
+      _profileCheckCompleted.add(userId);
+    } catch (e) {
+      debugPrint("AuthGate: Error ensuring profile exists: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
@@ -56,6 +72,27 @@ class _AuthGateState extends State<AuthGate> {
               .stream(primaryKey: ['id'])
               .eq('id', session.user.id),
           builder: (context, profileSnapshot) {
+            // Error state
+            if (profileSnapshot.hasError) {
+              return Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text("Database Error: ${profileSnapshot.error}"),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => setState(() {}),
+                        child: const Text("Retry"),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
             // Loading state for the DB check
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
@@ -63,10 +100,23 @@ class _AuthGateState extends State<AuthGate> {
               );
             }
 
-            // Handle missing profile (should be created by your SQL trigger) 
+            // --- AUTO-CREATE PROFILE IF MISSING ---
             if (!profileSnapshot.hasData || profileSnapshot.data!.isEmpty) {
+              // We trigger a one-time create if the profile is missing
+              // This prevents being "stuck" if the SQL trigger didn't run
+              _ensureProfileExists(session.user.id);
+              
               return const Scaffold(
-                body: Center(child: Text("Creating your home...")),
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text("Creating your home profile..."),
+                    ],
+                  ),
+                ),
               );
             }
 
@@ -77,7 +127,12 @@ class _AuthGateState extends State<AuthGate> {
               return const ProfileSetupPage();
             }
 
-            // 4. HOME: Success! Show the main app [cite: 54, 57]
+            // 4. ROOM SETUP: If apartment_id is null, show RoomSetupPage
+            if (profile['apartment_id'] == null) {
+              return const RoomSetupPage();
+            }
+
+            // 5. HOME: Success! Show the main app [cite: 54, 57]
             return const HomePage();
           },
         );
