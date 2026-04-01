@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/neo_bento_widgets.dart';
+import '../../../inventory/data/models/inventory_item_model.dart';
+import '../../../inventory/data/repositories/inventory_repository.dart';
 import 'split_bill_page.dart';
 
 class AddBillPage extends StatefulWidget {
@@ -17,6 +19,32 @@ class _AddBillPageState extends State<AddBillPage> {
   final _storeNameController = TextEditingController();
   final List<BillItem> _items = [BillItem(name: '', price: 0)];
   bool _isLoading = false;
+  List<InventoryItem> _shoppingListItems = [];
+  final InventoryRepository _inventoryRepo = InventoryRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchShoppingList();
+  }
+
+  Future<void> _fetchShoppingList() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final profile = await Supabase.instance.client.from('profiles').select('apartment_id').eq('id', user.id).maybeSingle();
+      if (profile != null && profile['apartment_id'] != null) {
+        final items = await _inventoryRepo.getInventoryItems(profile['apartment_id']);
+        if (mounted) {
+          setState(() {
+            _shoppingListItems = items.where((i) => i.quantity <= 0).toList();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching shopping list recommendations: $e");
+    }
+  }
 
   Future<void> _scanReceipt() async {
     final picker = ImagePicker();
@@ -81,6 +109,19 @@ class _AddBillPageState extends State<AddBillPage> {
     });
   }
 
+  void _addRecommendedItem(InventoryItem item) {
+    setState(() {
+      // If there is an empty row, fill it. Else add new.
+      final emptyIndex = _items.indexWhere((i) => i.name.isEmpty && i.price == 0);
+      if (emptyIndex != -1) {
+        _items[emptyIndex].name = item.itemName;
+      } else {
+        _items.add(BillItem(name: item.itemName, price: 0));
+      }
+      _shoppingListItems.removeWhere((i) => i.id == item.id);
+    });
+  }
+
   void _removeItem(int index) {
     setState(() {
       _items.removeAt(index);
@@ -88,8 +129,8 @@ class _AddBillPageState extends State<AddBillPage> {
   }
 
   Future<void> _saveBill() async {
-    if (_storeNameController.text.isEmpty || _items.any((item) => item.name.isEmpty || item.price <= 0)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields correctly.')));
+    if (_items.any((item) => item.name.isEmpty || item.price <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all item fields correctly.')));
       return;
     }
 
@@ -101,20 +142,21 @@ class _AddBillPageState extends State<AddBillPage> {
       final apartmentId = (await Supabase.instance.client.from('profiles').select('apartment_id').eq('id', user.id).single())['apartment_id'];
       final totalAmount = _items.fold<double>(0, (sum, item) => sum + item.price);
 
-      final billResponse = await Supabase.instance.client.from('expenses').insert({
-        'amount': totalAmount,
-        'store_name': _storeNameController.text,
-        'paid_by': user.id,
+      if (apartmentId == null) {
+        throw Exception("You must be part of an apartment to add a bill.");
+      }
+
+      final billResponse = await Supabase.instance.client.from('bills').insert({
+        'total_amount': totalAmount,
+        'store_name': _storeNameController.text.isEmpty ? 'Miscellaneous' : _storeNameController.text,
+        'creator_id': user.id,
         'apartment_id': apartmentId,
+        'bill_date': DateTime.now().toIso8601String(),
       }).select().single();
 
       final billId = billResponse['id'];
 
       for (var item in _items) {
-        // We use inventory to track items from expenses if needed,
-        // but for now we keep the flow consistent with bill_items if it exists.
-        // If your schema doesn't have bill_items, we should skip this or use inventory.
-        // Looking at the provided schema, bill_items exists.
         await Supabase.instance.client.from('bill_items').insert({
           'bill_id': billId,
           'item_name': item.name,
@@ -122,20 +164,21 @@ class _AddBillPageState extends State<AddBillPage> {
         });
 
         // --- GROCERY AUTO-REFILL LOGIC ---
-        // If an item in the bill matches a grocery item that is 'runout', refill it.
         try {
           final groceryMatch = await Supabase.instance.client
               .from('inventory')
               .select()
               .eq('apartment_id', apartmentId)
               .ilike('item_name', '%${item.name}%')
-              .eq('status', 'runout')
               .maybeSingle();
 
           if (groceryMatch != null) {
             await Supabase.instance.client
                 .from('inventory')
-                .update({'status': 'refilled'})
+                .update({
+                  'status': 'refilled',
+                  'quantity': groceryMatch['quantity'] <= 0 ? 1 : groceryMatch['quantity']
+                })
                 .eq('id', groceryMatch['id']);
           }
         } catch (e) {
@@ -177,8 +220,36 @@ class _AddBillPageState extends State<AddBillPage> {
           children: [
             TextField(
               controller: _storeNameController,
-              decoration: const InputDecoration(labelText: 'Store Name'),
+              decoration: const InputDecoration(labelText: 'Store Name (Optional)'),
             ),
+            const SizedBox(height: 16),
+            if (_shoppingListItems.isNotEmpty) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Shopping List Recommendations', style: Theme.of(context).textTheme.labelLarge),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _shoppingListItems.length,
+                  itemBuilder: (context, index) {
+                    final item = _shoppingListItems[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ActionChip(
+                        avatar: const Icon(Icons.add_shopping_cart, size: 16),
+                        label: Text(item.itemName),
+                        onPressed: () => _addRecommendedItem(item),
+                        backgroundColor: AppColors.accentPink.withOpacity(0.1),
+                        side: const BorderSide(color: AppColors.accentPink),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             Expanded(
               child: ListView.builder(

@@ -10,8 +10,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/neo_bento_widgets.dart';
 import '../../../../main.dart';
 import 'profile_settings_page.dart';
-import 'grocery_page.dart';
-import 'bill_page.dart';
+import '../../../inventory/presentation/pages/grocery_page.dart';
+import '../../../bills/presentation/pages/bill_page.dart';
+import 'room_setup_page.dart';
+import '../../../inventory/presentation/pages/shopping_list_page.dart';
+import '../../../bills/presentation/pages/spinner_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -89,14 +93,15 @@ class _HomePageState extends State<HomePage> {
       builder: (context) => GlassSheet(
         title: 'Account & Settings',
         children: [
-          _MenuTile(
-            icon: Icons.share_rounded,
-            label: 'Share Invite',
-            onTap: () {
-              Navigator.pop(context);
-              _showShareInvite();
-            },
-          ),
+          if (_apartmentData != null)
+            _MenuTile(
+              icon: Icons.share_rounded,
+              label: 'Share Invite',
+              onTap: () {
+                Navigator.pop(context);
+                _showShareInvite();
+              },
+            ),
           _MenuTile(
             icon: Icons.person_outline_rounded,
             label: 'Edit Profile',
@@ -142,7 +147,7 @@ class _HomePageState extends State<HomePage> {
             "Share this code or scan the QR to join this home.",
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -152,7 +157,7 @@ class _HomePageState extends State<HomePage> {
             child: QrImageView(
               data: inviteCode,
               version: QrVersions.auto,
-              size: 200.0,
+              size: 150.0,
               eyeStyle: const QrEyeStyle(
                 eyeShape: QrEyeShape.circle,
                 color: Colors.black,
@@ -163,7 +168,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             decoration: BoxDecoration(
@@ -192,6 +197,165 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  void _showRoomMenu() {
+    HapticFeedback.mediumImpact();
+    final apartmentName = _apartmentData?['name'] ?? 'Your Home';
+    final inviteCode = _apartmentData?['invite_code'] ?? '------';
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (modalContext) => GlassSheet(
+        title: 'Room Settings',
+        children: [
+          ListTile(
+            leading: const Icon(Icons.meeting_room_rounded),
+            title: Text(apartmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('Tap to edit name'),
+            trailing: const Icon(Icons.edit_rounded, size: 20),
+            onTap: () {
+              Navigator.pop(modalContext);
+              _showEditRoomNameDialog(apartmentName);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.qr_code_rounded),
+            title: Text('Invite Code: $inviteCode', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('Tap to share QR'),
+            trailing: const Icon(Icons.share_rounded, size: 20),
+            onTap: () {
+              Navigator.pop(modalContext);
+              _showShareInvite();
+            },
+          ),
+          const Divider(height: 32, thickness: 1),
+          Text('Roommates (${_roommates.length})', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 250),
+            child: SingleChildScrollView(
+              child: Column(
+                children: _roommates.map((r) {
+                  return ListTile(
+                    leading: CircleAvatar(backgroundImage: NetworkImage(r['avatar_url'] ?? 'https://api.dicebear.com/7.x/avataaars/svg?seed=${r['id']}')),
+                    title: Text(r['username'] ?? 'Roomie', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: r['id'] == user?.id ? const Text('You') : const Text('Member'),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const Divider(height: 32, thickness: 1),
+          _MenuTile(
+            icon: Icons.exit_to_app_rounded,
+            label: 'Leave Room',
+            isDestructive: true,
+            onTap: () {
+              Navigator.pop(modalContext);
+              _leaveRoom();
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showEditRoomNameDialog(String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit Room Name'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'New Name'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty && _apartmentData != null) {
+                Navigator.pop(dialogContext);
+                try {
+                  await Supabase.instance.client.from('apartments').update({'name': newName}).eq('id', _apartmentData!['id']);
+                  _fetchProfile(); // Refresh UI
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _leaveRoom() async {
+    bool isLastRoommate = false;
+    final apartmentId = _apartmentData?['id'];
+    
+    if (apartmentId != null) {
+      try {
+        final remaining = await Supabase.instance.client.from('profiles').select('id').eq('apartment_id', apartmentId);
+        if (remaining.length <= 1) {
+          isLastRoommate = true;
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isLastRoommate ? 'Delete Room?' : 'Leave Room?'),
+        content: Text(isLastRoommate 
+            ? 'You are the last member here. Do you want to leave and delete the room permanently? All bills and groceries will be wiped.'
+            : 'Are you sure you want to leave this shared home? You will need an invite code to rejoin.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(isLastRoommate ? 'Delete Room' : 'Leave', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!mounted) return;
+      try {
+        await Supabase.instance.client.from('profiles').update({'apartment_id': null}).eq('id', user!.id);
+        
+        if (isLastRoommate && apartmentId != null) {
+          try {
+             // Fetch all bills to delete splits and items manually for cascade
+             final bills = await Supabase.instance.client.from('bills').select('id').eq('apartment_id', apartmentId);
+             for (var b in bills) {
+                await Supabase.instance.client.from('bill_splits').delete().eq('bill_id', b['id']);
+                await Supabase.instance.client.from('bill_items').delete().eq('bill_id', b['id']);
+             }
+             await Supabase.instance.client.from('bills').delete().eq('apartment_id', apartmentId);
+             await Supabase.instance.client.from('inventory').delete().eq('apartment_id', apartmentId);
+             await Supabase.instance.client.from('apartments').delete().eq('id', apartmentId);
+          } catch (e) {
+             debugPrint('Force cascade delete failed: $e');
+          }
+        }
+
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RoomSetupPage()));
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error leaving room: $e")));
+      }
+    }
   }
 
   @override
@@ -292,8 +456,20 @@ class _HomePageState extends State<HomePage> {
               right: 24,
               child: _FloatingDock(
                 onProfileTap: _showProfileMenu,
-                onGroceryTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GroceryPage())),
-                onBillTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BillPage())),
+                onGroceryTap: () {
+                  if (_apartmentData == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Join or create a room first! ✨'), behavior: SnackBarBehavior.floating));
+                  } else {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const GroceryPage()));
+                  }
+                },
+                onBillTap: () {
+                  if (_apartmentData == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Join or create a room first! ✨'), behavior: SnackBarBehavior.floating));
+                  } else {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const BillPage()));
+                  }
+                },
               ),
             ),
           ],
@@ -304,38 +480,48 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildStaggeredBentoGrid() {
     final apartment = _profileData?['apartments'];
+    final bool hasRoom = apartment != null;
+
     final tiles = [
       _BentoData(
-        title: apartment?['name'] ?? 'Your Room',
-        subtitle: '${_roommates.length} Roommates',
+        title: hasRoom ? (apartment['name'] ?? 'Your Room') : 'Join a Room',
+        subtitle: hasRoom ? '${_roommates.length} Roommates' : 'Tap to initialize',
         icon: Icons.home_rounded,
-        color: AppColors.bentoMint,
+        color: AppColors.accentMint,
         crossAxisCellCount: 2,
-        mainAxisCellCount: 2,
+        mainAxisCellCount: 3,
       ),
       _BentoData(
         title: 'Inventory',
-        subtitle: 'Milk run out',
+        subtitle: hasRoom ? 'Milk run out' : 'Not available',
         icon: Icons.shopping_basket_rounded,
-        color: AppColors.bentoSalmon,
+        color: hasRoom ? AppColors.accentPink : Colors.grey.withValues(alpha: 0.3),
         crossAxisCellCount: 2,
-        mainAxisCellCount: 1,
-      ),
-      _BentoData(
-        title: 'Expenses',
-        subtitle: 'Due in 2d',
-        icon: Icons.payments_rounded,
-        color: AppColors.bentoLilac,
-        crossAxisCellCount: 1,
         mainAxisCellCount: 2,
       ),
       _BentoData(
-        title: 'Mood',
-        subtitle: 'Vibin\'',
-        icon: Icons.emoji_emotions_rounded,
-        color: AppColors.bentoLemon,
-        crossAxisCellCount: 1,
-        mainAxisCellCount: 1,
+        title: 'Expenses',
+        subtitle: hasRoom ? 'Due in 2d' : 'Not available',
+        icon: Icons.payments_rounded,
+        color: hasRoom ? AppColors.accentBlue : Colors.grey.withValues(alpha: 0.3),
+        crossAxisCellCount: 2,
+        mainAxisCellCount: 3,
+      ),
+      _BentoData(
+        title: 'Shopping List',
+        subtitle: hasRoom ? 'Manage items' : 'Not available',
+        icon: Icons.format_list_bulleted_rounded,
+        color: hasRoom ? AppColors.accentYellow : Colors.grey.withValues(alpha: 0.3),
+        crossAxisCellCount: 2,
+        mainAxisCellCount: 2,
+      ),
+      _BentoData(
+        title: 'Spin to Pay',
+        subtitle: hasRoom ? 'Settle disputes!' : 'Not available',
+        icon: Icons.casino_rounded,
+        color: hasRoom ? AppColors.accentPink : Colors.grey.withValues(alpha: 0.3),
+        crossAxisCellCount: 2,
+        mainAxisCellCount: 2,
       ),
     ];
 
@@ -351,12 +537,25 @@ class _HomePageState extends State<HomePage> {
           mainAxisCellCount: data.mainAxisCellCount,
           child: NeoBentoCard(
             color: data.color,
+            padding: const EdgeInsets.all(16),
             delay: (index * 100).ms,
             onTap: () {
-              if (data.title == 'Inventory') {
+              if (index == 0) {
+                if (!hasRoom) {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RoomSetupPage()));
+                } else {
+                  _showRoomMenu();
+                }
+              } else if (!hasRoom) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Join or create a room first! ✨'), behavior: SnackBarBehavior.floating));
+              } else if (data.title == 'Inventory') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const GroceryPage()));
               } else if (data.title == 'Expenses') {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const BillPage()));
+              } else if (data.title == 'Shopping List') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListPage()));
+              } else if (data.title == 'Spin to Pay') {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => SpinnerPage(roommates: _roommates)));
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -367,14 +566,20 @@ class _HomePageState extends State<HomePage> {
                 );
               }
             },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(data.icon, size: 32, color: Colors.black87),
-                const SizedBox(height: 12),
-                FittedBox(child: Text(data.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
-                Text(data.subtitle, style: const TextStyle(fontSize: 14, color: Colors.black54)),
-              ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(data.icon, size: 36, color: Theme.of(context).colorScheme.onSurface),
+                  const SizedBox(height: 14),
+                  Text(data.title, style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.bold, fontSize: 22, color: Theme.of(context).colorScheme.onSurface)),
+                  const SizedBox(height: 4),
+                  Text(data.subtitle, style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
+                ],
+              ),
             ),
           ),
         );

@@ -49,7 +49,7 @@ class _SplitBillPageState extends State<SplitBillPage> {
 
     setState(() => _isLoading = true);
     try {
-      final totalAmount = widget.bill['amount'] as double;
+      final totalAmount = widget.bill['total_amount'] as double;
       final splitAmount = totalAmount / _selectedRoommates.length;
 
       for (var roommateId in _selectedRoommates) {
@@ -81,7 +81,7 @@ class _SplitBillPageState extends State<SplitBillPage> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  Text('Total: \$${widget.bill['amount'].toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineSmall),
+                  Text('Total: \$${widget.bill['total_amount'].toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 20),
                   Wrap(
                     spacing: 8.0,
@@ -103,7 +103,7 @@ class _SplitBillPageState extends State<SplitBillPage> {
                   ),
                   const SizedBox(height: 20),
                   if (_splitMethod == 'equally')
-                    Text('Each pays: \$${(_selectedRoommates.isNotEmpty ? widget.bill['amount'] / _selectedRoommates.length : 0).toStringAsFixed(2)}'),
+                    Text('Each pays: \$${(_selectedRoommates.isNotEmpty ? widget.bill['total_amount'] / _selectedRoommates.length : 0).toStringAsFixed(2)}'),
                   const Spacer(),
                   SquishyButton(label: 'Confirm Split', onPressed: _saveSplits),
                   const SizedBox(height: 10),

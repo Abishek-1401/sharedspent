@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -24,6 +25,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     FocusScope.of(context).unfocus();
+    HapticFeedback.lightImpact();
     setState(() => _isLoading = true);
 
     try {
@@ -148,7 +150,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           labelText: 'Email address',
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
-                      ).animate().fadeIn(delay: 220.ms),
+                      ).animate().fadeIn(duration: 300.ms),
                       const SizedBox(height: 16),
                       TextField(
                         controller: _passwordController,
@@ -157,7 +159,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           labelText: 'Create a password',
                           prefixIcon: Icon(Icons.lock_outline),
                         ),
-                      ).animate().fadeIn(delay: 320.ms),
+                      ).animate().fadeIn(duration: 300.ms),
                       const SizedBox(height: 32),
                       if (_isLoading)
                         const Center(child: CircularProgressIndicator())

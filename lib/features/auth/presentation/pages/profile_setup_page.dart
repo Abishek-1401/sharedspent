@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/constants/avatar_presets.dart';
 import '../../../../core/widgets/neo_bento_widgets.dart';
+import '../../../home/presentation/pages/home_page.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -55,12 +56,18 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       }
 
       // 2. Update the profiles table
-      // The AuthGate's StreamBuilder will see this change and swap the page automatically
       await Supabase.instance.client.from('profiles').update({
         'username': _usernameController.text.trim(),
         'avatar_url': finalAvatarUrl,
       }).eq('id', user.id);
 
+      if (mounted) {
+        // Manually navigate since AuthGate won't automatically trigger a rebuild from database updates
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomePage()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       _showError(e.toString());
       if (mounted) setState(() => _isLoading = false);

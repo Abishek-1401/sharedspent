@@ -278,7 +278,14 @@ class GlassSheet extends StatelessWidget {
                 const SizedBox(height: 24),
                 Text(title, style: theme.textTheme.titleLarge),
                 const SizedBox(height: 24),
-                ...children,
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: children,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

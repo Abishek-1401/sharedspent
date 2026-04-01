@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/neo_bento_widgets.dart';
+import '../../../auth/presentation/pages/sign_up_page.dart';
 
 class ProfileSettingsPage extends StatefulWidget {
   const ProfileSettingsPage({super.key});
@@ -77,16 +78,44 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     );
 
     if (confirmed == true) {
+      if (!mounted) return;
       setState(() => _isLoading = true);
       try {
-        // In a real app, you'd call a Supabase Edge Function to delete the user fully
-        // For now, we sign out and show a message
+        final userId = user?.id;
+        if (userId != null) {
+          // Delete their apartment if they are the last one.
+          final profile = await Supabase.instance.client.from('profiles').select('apartment_id').eq('id', userId).maybeSingle();
+          if (profile != null && profile['apartment_id'] != null) {
+            final aptId = profile['apartment_id'];
+            await Supabase.instance.client.from('profiles').update({'apartment_id': null}).eq('id', userId);
+            final remaining = await Supabase.instance.client.from('profiles').select('id').eq('apartment_id', aptId);
+            if (remaining.isEmpty) {
+              await Supabase.instance.client.from('apartments').delete().eq('id', aptId);
+            }
+          }
+          
+          // Delete user details from public profiles table
+          await Supabase.instance.client.from('profiles').delete().eq('id', userId);
+
+          // Attempt to delete OAuth / Auth record via RPC if available
+          try {
+            await Supabase.instance.client.rpc('delete_user');
+          } catch (rpcError) {
+             debugPrint("RPC delete_user failed or not found, OAuth might remain active: $rpcError");
+          }
+        }
+        
         await Supabase.instance.client.auth.signOut();
         if (mounted) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const SignUpPage()),
+            (route) => false,
+          );
         }
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }

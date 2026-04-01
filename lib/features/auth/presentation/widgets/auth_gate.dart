@@ -72,16 +72,24 @@ class _AuthGateState extends State<AuthGate> {
               .stream(primaryKey: ['id'])
               .eq('id', session.user.id),
           builder: (context, profileSnapshot) {
-            // Error state
-            if (profileSnapshot.hasError) {
+            // Loading state for the DB check
+            if (profileSnapshot.connectionState == ConnectionState.waiting && !profileSnapshot.hasData) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            // Error state ONLY if we don't have data already. 
+            // This suppresses RealtimeSubscriptionException popups/screens when a connection drops but we already loaded the app.
+            if (profileSnapshot.hasError && (!profileSnapshot.hasData || profileSnapshot.data!.isEmpty)) {
               return Scaffold(
                 body: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 48),
                       const SizedBox(height: 16),
-                      Text("Database Error: ${profileSnapshot.error}"),
+                      Text("Connection Error: ${profileSnapshot.error.toString()}"),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () => setState(() {}),
@@ -90,13 +98,6 @@ class _AuthGateState extends State<AuthGate> {
                     ],
                   ),
                 ),
-              );
-            }
-
-            // Loading state for the DB check
-            if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
               );
             }
 

@@ -36,11 +36,11 @@ class _BillDetailsPageState extends State<BillDetailsPage> {
       if (mounted) _splits = List<Map<String, dynamic>>.from(splitsResponse);
       
       // If we don't have paid_by_user in the bill object, fetch it
-      if (widget.bill['paid_by_user'] == null && widget.bill['paid_by'] != null) {
+      if (widget.bill['paid_by_user'] == null && widget.bill['creator_id'] != null) {
         final creatorResponse = await Supabase.instance.client
             .from('profiles')
             .select('username, avatar_url')
-            .eq('id', widget.bill['paid_by'])
+            .eq('id', widget.bill['creator_id'])
             .maybeSingle();
         if (mounted && creatorResponse != null) {
           setState(() {
@@ -125,6 +125,10 @@ class _BillDetailsPageState extends State<BillDetailsPage> {
     final user = Supabase.instance.client.auth.currentUser;
     final mySplit = _splits.where((s) => s['user_id'] == user?.id).firstOrNull;
     final amountToPay = mySplit != null ? (mySplit['amount_owed'] - mySplit['amount_paid']) : 0.0;
+    
+    final isCreator = widget.bill['creator_id'] == user?.id;
+    final totalSplits = _splits.length;
+    final paidSplits = _splits.where((s) => s['status'] == 'paid').length;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.bill['store_name'] ?? 'Bill Details')),
@@ -136,16 +140,22 @@ class _BillDetailsPageState extends State<BillDetailsPage> {
                 Text('Items', style: Theme.of(context).textTheme.headlineSmall),
                 ..._items.map((item) => ListTile(title: Text(item['item_name']), trailing: Text('\$${item['price'].toStringAsFixed(2)}'))),
                 const Divider(height: 30),
-                Text('Splits', style: Theme.of(context).textTheme.headlineSmall),
-                ..._splits.map((split) {
+                Text('Splits ($paidSplits/$totalSplits Paid)', style: Theme.of(context).textTheme.headlineSmall),
+                ..._splits.where((s) => isCreator || s['user_id'] == user?.id || s['status'] == 'paid').map((split) {
                   final roommate = split['user'];
                   return ListTile(
                     leading: CircleAvatar(backgroundImage: NetworkImage(roommate?['avatar_url'] ?? '')),
                     title: Text(roommate?['username'] ?? '...'),
                     subtitle: Text('Owes: \$${split['amount_owed'].toStringAsFixed(2)}'),
-                    trailing: Text(split['status'], style: TextStyle(color: split['status'] == 'paid' ? AppColors.success : AppColors.accentRed)),
+                    trailing: Text(split['status'], style: TextStyle(color: split['status'] == 'paid' ? AppColors.success : AppColors.accentRed, fontWeight: FontWeight.bold)),
                   );
                 }),
+                if (!isCreator && paidSplits < totalSplits)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text('${totalSplits - paidSplits} roommate(s) still need to pay. Hidden for privacy.', 
+                               style: Theme.of(context).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic, color: Colors.grey)),
+                  ),
                 const SizedBox(height: 30),
                 if (amountToPay > 0)
                   SquishyButton(onPressed: () => _showPaymentOptions(amountToPay), label: 'Pay Your Share (\$${amountToPay.toStringAsFixed(2)})')
