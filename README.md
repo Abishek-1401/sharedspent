@@ -1,4 +1,4 @@
-# cohabit
+# SharedSpent (cohabit)
 
 A new Flutter project.
 
